@@ -14,9 +14,11 @@ app.add_middleware(
 
 API_KEY = "AIzaSyDwPbL9xk-MKP-bKINW2uQ2WBqqjS9uG2Y"
 genai.configure(api_key=API_KEY)
+
 #models = genai.list_models()
 #for model in models:
 #    print(model.name)
+
 class ChatRequest(BaseModel):
     message: str
 
