@@ -12,6 +12,8 @@ RUN npm ci
 
 # Copy the rest of the app files
 COPY . .
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
 
 # Build the React (Vite) app
 RUN npm run build

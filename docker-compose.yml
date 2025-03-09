@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    container_name: magical_clarke
+    container_name: chatbot_container
     build: ./Backend/chatbot-service
     ports:
       - "8000:8000"
@@ -10,12 +10,18 @@ services:
       - speak-ez-network
 
   frontend:
-    container_name: loving_newton
-    build: ./Frontend/speakez
+    container_name: frontend_container
+    build:
+      context: ./Frontend/speakez
+      args:
+        - VITE_BACKEND_URL=http://16.171.176.11:8000    
+        #use localhost for local dev 
     ports:
       - "3000:80"
     depends_on:
       - backend
+    environment:
+        - VITE_BACKEND_URL=http://16.171.176.11:8000    
     networks:
       - speak-ez-network
 

@@ -23,7 +23,7 @@ const Chatbot = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`http://localhost:8000/chat`, {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/chat`, {
         message: message,
       });
 
