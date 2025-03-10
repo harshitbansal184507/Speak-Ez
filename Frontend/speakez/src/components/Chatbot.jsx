@@ -7,7 +7,6 @@ const Chatbot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const chatBoxRef = useRef(null);
 
-  // Scroll to the bottom of the chat box when a new message is added
   useEffect(() => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
@@ -17,7 +16,6 @@ const Chatbot = () => {
   const sendMessage = async () => {
     if (!message.trim()) return;
 
-    // Add user message to chat
     setChat((prevChat) => [...prevChat, { sender: "user", text: message }]);
     setMessage("");
     setIsLoading(true);
