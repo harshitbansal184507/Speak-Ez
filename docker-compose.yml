@@ -14,14 +14,14 @@ services:
     build:
       context: ./Frontend/speakez
       args:
-        - VITE_BACKEND_URL=http://chatbot-backend:8000    
+        - VITE_BACKEND_URL=https://chatbot-backend:8000    
         #use localhost for local dev 
     ports:
       - "3000:80"
     depends_on:
       - chatbot-backend
     environment:
-        - VITE_BACKEND_URL=http://chatbot-backend:8000    
+        - VITE_BACKEND_URL=https://chatbot-backend:8000    
     networks:
       - speak-ez-network
 
