@@ -1,11 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import microphone from "../static/microphone.png";
 
 const Chatbot = () => {
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voices, setVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState(null);
   const chatBoxRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const silenceTimerRef = useRef(null);
 
   useEffect(() => {
     if (chatBoxRef.current) {
@@ -13,20 +19,37 @@ const Chatbot = () => {
     }
   }, [chat]);
 
-  const sendMessage = async () => {
-    if (!message.trim()) return;
+  // **Fetch Available Voices for Speech Synthesis**
+  useEffect(() => {
+    const loadVoices = () => {
+      const synthVoices = speechSynthesis.getVoices();
+      setVoices(synthVoices);
+      if (synthVoices.length > 0) setSelectedVoice(synthVoices[0]); // Default to first voice
+    };
 
-    setChat((prevChat) => [...prevChat, { sender: "user", text: message }]);
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    loadVoices();
+  }, []);
+
+  // **Send Message to API**
+  const sendMessage = async (text) => {
+    if (!text.trim()) return;
+
+    setChat((prevChat) => [...prevChat, { sender: "user", text }]);
     setMessage("");
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/chat`, {
-        message: message,
-      });
+      const response = await axios.post(`http://localhost:8000/chat`, { message: text });
 
-      // Add bot response to chat
-      setChat((prevChat) => [...prevChat, { sender: "bot", text: response.data.reply }]);
+      let botMessage = response.data.reply;
+      botMessage = cleanResponse(botMessage); // Clean unwanted characters
+      setChat((prevChat) => [...prevChat, { sender: "bot", text: botMessage }]);
+      speakText(botMessage);
+
     } catch (error) {
       console.error("Error:", error);
       setChat((prevChat) => [...prevChat, { sender: "bot", text: "Sorry, something went wrong!" }]);
@@ -35,9 +58,69 @@ const Chatbot = () => {
     }
   };
 
+  // **Clean the Response**
+  const cleanResponse = (text) => {
+    return text.replace(/\*/g, ""); // Remove asterisks
+  };
+
+  // **Speak the Bot Response**
+  const speakText = (text) => {
+    if ("speechSynthesis" in window && selectedVoice) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US"; // Adjust language if needed
+      utterance.rate = 1; // Normal speech rate
+      utterance.pitch = 1; // Normal pitch
+      utterance.voice = selectedVoice; // Use the selected voice
+      speechSynthesis.speak(utterance);
+    } else {
+      console.warn("Speech synthesis not supported or no voice selected.");
+    }
+  };
+
+  // **Start Voice Recognition**
+  const startListening = () => {
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      alert("Your browser does not support speech recognition.");
+      return;
+    }
+
+    setIsListening(true);
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = false;
+    recognitionRef.current.lang = "en-US";
+
+    recognitionRef.current.onresult = (event) => {
+      const transcript = event.results[event.results.length - 1][0].transcript;
+      setMessage(transcript);
+
+      // Reset silence timer
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        stopListening();
+        sendMessage(transcript); 
+      }, 2000);
+    };
+
+    recognitionRef.current.onend = () => setIsListening(false);
+    recognitionRef.current.start();
+  };
+
+  // **Stop Listening**
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+  };
+
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>SPEAK-EZ</h2>
+
+      {/* Chatbox */}
       <div style={styles.chatBox} ref={chatBoxRef}>
         {chat.map((msg, index) => (
           <div
@@ -57,6 +140,8 @@ const Chatbot = () => {
           </div>
         )}
       </div>
+
+      {/* Input & Buttons */}
       <div style={styles.inputContainer}>
         <input
           type="text"
@@ -64,16 +149,33 @@ const Chatbot = () => {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Type a message..."
-          onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+          onKeyPress={(e) => e.key === "Enter" && sendMessage(message)}
         />
-        <button style={styles.button} onClick={sendMessage} disabled={isLoading}>
+        <button style={styles.button} onClick={() => sendMessage(message)} disabled={isLoading}>
           Send
         </button>
+
+        {/* Speech Recognition Button */}
+        <button style={styles.micButton} onClick={isListening ? stopListening : startListening}>
+          <img src={microphone} alt="Mic" style={styles.micIcon} />
+        </button>
+      </div>
+
+      {/* Voice Selection Dropdown */}
+      <div style={styles.voiceSelection}>
+        <select onChange={(e) => setSelectedVoice(voices.find((voice) => voice.name === e.target.value))} value={selectedVoice?.name || ""}>
+          {voices.map((voice, index) => (
+            <option key={index} value={voice.name}>
+              {voice.name}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );
 };
 
+// **Styles**
 const styles = {
   container: {
     maxWidth: "500px",
@@ -110,6 +212,7 @@ const styles = {
   },
   inputContainer: {
     display: "flex",
+    alignItems: "center",
     marginTop: "15px",
   },
   input: {
@@ -133,6 +236,20 @@ const styles = {
     fontSize: "16px",
     fontWeight: "bold",
     transition: "background 0.3s ease",
+  },
+  micButton: {
+    marginLeft: "10px",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+  },
+  micIcon: {
+    width: "30px",
+    height: "30px",
+  },
+  voiceSelection: {
+    marginTop: "10px",
+    color: "white",
   },
 };
 
