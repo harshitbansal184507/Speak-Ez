@@ -4,7 +4,9 @@ import google.generativeai as genai
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv 
 import os 
-
+from database import create_user
+from models import User, ChatRequest, Token
+from fastapi.security import OAuth2PasswordRequestForm
 
 app = FastAPI()
 app.add_middleware(
@@ -14,6 +16,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.post("/register")
+async def register(user: User):
+    if not create_user(user.username, user.password):
+        raise HTTPException(status_code=400, detail="Username already exists")
+    return {"message": "User registered successfully"}
+
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

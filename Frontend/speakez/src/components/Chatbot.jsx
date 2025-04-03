@@ -19,12 +19,11 @@ const Chatbot = () => {
     }
   }, [chat]);
 
-  // **Fetch Available Voices for Speech Synthesis**
   useEffect(() => {
     const loadVoices = () => {
       const synthVoices = speechSynthesis.getVoices();
       setVoices(synthVoices);
-      if (synthVoices.length > 0) setSelectedVoice(synthVoices[0]); // Default to first voice
+      if (synthVoices.length > 0) setSelectedVoice(synthVoices[0]); 
     };
 
     if (speechSynthesis.onvoiceschanged !== undefined) {
@@ -34,7 +33,6 @@ const Chatbot = () => {
     loadVoices();
   }, []);
 
-  // **Send Message to API**
   const sendMessage = async (text) => {
     if (!text.trim()) return;
 
@@ -46,7 +44,7 @@ const Chatbot = () => {
       const response = await axios.post(`http://localhost:8000/chat`, { message: text });
 
       let botMessage = response.data.reply;
-      botMessage = cleanResponse(botMessage); // Clean unwanted characters
+      botMessage = cleanResponse(botMessage);
       setChat((prevChat) => [...prevChat, { sender: "bot", text: botMessage }]);
       speakText(botMessage);
 
@@ -58,26 +56,23 @@ const Chatbot = () => {
     }
   };
 
-  // **Clean the Response**
   const cleanResponse = (text) => {
-    return text.replace(/\*/g, ""); // Remove asterisks
+    return text.replace(/\*/g, ""); 
   };
 
-  // **Speak the Bot Response**
   const speakText = (text) => {
     if ("speechSynthesis" in window && selectedVoice) {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-US"; // Adjust language if needed
-      utterance.rate = 1; // Normal speech rate
-      utterance.pitch = 1; // Normal pitch
-      utterance.voice = selectedVoice; // Use the selected voice
+      utterance.lang = "en-US"; 
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.voice = selectedVoice; 
       speechSynthesis.speak(utterance);
     } else {
       console.warn("Speech synthesis not supported or no voice selected.");
     }
   };
 
-  // **Start Voice Recognition**
   const startListening = () => {
     if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
       alert("Your browser does not support speech recognition.");
@@ -96,7 +91,6 @@ const Chatbot = () => {
       const transcript = event.results[event.results.length - 1][0].transcript;
       setMessage(transcript);
 
-      // Reset silence timer
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
         stopListening();
@@ -108,7 +102,6 @@ const Chatbot = () => {
     recognitionRef.current.start();
   };
 
-  // **Stop Listening**
   const stopListening = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
@@ -141,7 +134,6 @@ const Chatbot = () => {
         )}
       </div>
 
-      {/* Input & Buttons */}
       <div style={styles.inputContainer}>
         <input
           type="text"
@@ -150,6 +142,7 @@ const Chatbot = () => {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Type a message..."
           onKeyPress={(e) => e.key === "Enter" && sendMessage(message)}
+          
         />
         <button style={styles.button} onClick={() => sendMessage(message)} disabled={isLoading}>
           Send
